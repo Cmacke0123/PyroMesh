@@ -5,18 +5,18 @@ module io
 
 contains
 
-  subroutine write_output(t)
-    integer, intent(in) :: t
+  subroutine write_output(timestep)
+    integer, intent(in) :: timestep
     integer :: i, j
     character(len=30) :: fname
     integer :: unit
 
-    write(fname,'("fire_",I4.4,".dat")') t
+    write(fname,'("fire_",I4.4,".dat")') timestep
     open(newunit=unit, file=fname)
 
     do i = 1, nx
       do j = 1, ny
-        write(unit,*) i, j, T(i,j), fuel(i,j), state(i,j)
+        write(unit,*) i, j, temperature(i,j), fuel(i,j), state(i,j)
       end do
     end do
 
