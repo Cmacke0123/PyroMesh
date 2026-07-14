@@ -2,9 +2,10 @@
 
 ## Author(s): Connor MacKenzie
 
+
 #### Welcome to ***PyroMesh*** - a collaborative project set out to understand and predict wildfire behavior more accurately using physics and forestry informed algorithms. Inspiration for this project derives from a career in plasma physics were computational modelling is heavily used. Within this field, a industry standard for computer modelling of plasmas is known as Particle-in-Cell (PIC) simulations where space is discretized into a grid, and bunches of particles called "macro-particles" are pushed each time step based on the velocities of the macro-particles and the electromagnetic fields present. 
 
-
+![Pyromesh](images/Pyromesh.jpeg)
 #### The research goal here is to develop a physics informed wildfire spread model capable of predicting fire arrival time and burn patterns using a hybrid Eulerian-Lagrangian (PIC-inspired) framework. 
 
 #### Consider a potential 2D space-discretized grid where each cell has: 
@@ -89,3 +90,4 @@ wind fields come from weather models or simplified flow models
 ============================
 
 ```
+

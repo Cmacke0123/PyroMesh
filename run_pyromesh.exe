@@ -1,2 +1,2 @@
-rm *.dat
+rm -f /output/*.dat
 ./bin/wildpic
