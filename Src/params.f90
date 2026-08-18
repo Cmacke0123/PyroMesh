@@ -3,16 +3,19 @@ module params
 
     integer, parameter :: nx = 200
     integer, parameter :: ny = 200
-    integer, parameter :: nt = 500
+    integer, parameter :: nt = 400
 
     real(8), parameter :: dx = 5.0
     real(8), parameter :: dt = 0.01
     
     real(8), parameter :: alpha = 5.0
     real(8), parameter :: ignition_T = 600.0
-    real(8), parameter :: fuel_rate  = 0.02
-    real(8), parameter :: heat_release = 1.0
+    real(8), parameter :: fuel_rate  = 0.5
+    real(8), parameter :: heat_release = 900.0
     real(8), parameter :: flame_heat = 500.0
+    
+    real(8), parameter :: ambient_temperature = 300.0
+    real(8), parameter :: cooling_rate = 5.0
     
 end module params
 

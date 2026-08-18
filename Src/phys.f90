@@ -97,7 +97,8 @@ subroutine burn_cells()
                 fuel(i,j) = fuel(i,j) - fuel_rate * dt
 
                 temperature(i,j) = temperature(i,j) &
-                                 + heat_release * fuel_rate * dt
+                                 + heat_release * fuel_rate * dt &
+                                 - cooling_rate*(temperature(i,j)-ambient_temperature)*dt
 
 
                 if (fuel(i,j) <= 0.0d0) then
