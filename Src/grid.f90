@@ -5,6 +5,8 @@ module grid
   real(8), allocatable :: temperature(:,:), temperature_new(:,:)
   real(8), allocatable :: fuel(:,:)
   integer, allocatable :: state(:,:)
+  integer, allocatable :: wind_x(:,:), wind_y(:,:)
+
 
 contains
 
@@ -14,10 +16,13 @@ contains
     allocate(temperature(nx,ny), temperature_new(nx,ny))
     allocate(fuel(nx,ny))
     allocate(state(nx,ny))
+    allocate(wind_x(nx,ny), wind_y(nx,ny))
 
     temperature = 300.0
     fuel = 1.0
     state = 0   ! 0 = unburned, 1 = burning, 2 = burned
+    wind_x = wind_speed_x
+    wind_y = wind_speed_y
 
     ! ignition seed
     do i = nx/2-2, nx/2+2

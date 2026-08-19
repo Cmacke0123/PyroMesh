@@ -9,17 +9,21 @@ contains
 
 
 !==========================================================
-! Thermal diffusion
+! Thermal diffusion + wind advection
 !
 ! Solves:
-! dT/dt = alpha * laplacian(T)
+! dT/dt = alpha * laplacian(T) - (wind_x * dT/dx + wind_y * dT/dy)
 !
+! The advection term uses upwind differencing (picks the neighbor the
+! wind is blowing FROM). Central differencing for advection is
+! unconditionally unstable with forward-Euler time stepping, so this
+! isn't a style choice -- it's required for the scheme to stay stable.
 !==========================================================
 
 subroutine step_temperature()
 
     integer :: i, j
-    real(8) :: lap
+    real(8) :: lap, dTdx, dTdy
 
     temperature_new = temperature
 
@@ -32,8 +36,21 @@ subroutine step_temperature()
                       + temperature(i,j+1) + temperature(i,j-1) &
                       - 4.0d0*temperature(i,j) ) / (dx*dx)
 
+                if (wind_x(i,j) >= 0.0d0) then
+                    dTdx = ( temperature(i,j) - temperature(i-1,j) ) / dx
+                else
+                    dTdx = ( temperature(i+1,j) - temperature(i,j) ) / dx
+                end if
+
+                if (wind_y(i,j) >= 0.0d0) then
+                    dTdy = ( temperature(i,j) - temperature(i,j-1) ) / dx
+                else
+                    dTdy = ( temperature(i,j+1) - temperature(i,j) ) / dx
+                end if
+
                 temperature_new(i,j) = temperature(i,j) &
-                                     + dt * alpha * lap
+                                     + dt * alpha * lap &
+                                     - dt * ( wind_x(i,j)*dTdx + wind_y(i,j)*dTdy )
 
             end if
 
@@ -118,37 +135,43 @@ end subroutine burn_cells
 
 
 !==========================================================
-! Heat transfer from flame to neighboring cells
-!
+! Heat transfer from flame to neighboring cells, biased downwind
+! ("flame tilt"). The downwind neighbor gets more than flame_heat*dt,
+! the upwind neighbor gets less, clamped at zero so a strong wind can't
+! push the deposit negative.
 !==========================================================
 
 subroutine deposit_heat()
 
     integer :: i, j
+    real(8) :: bias_x, bias_y
 
     do i = 1, nx
         do j = 1, ny
 
             if (state(i,j) == 1) then
 
+                bias_x = flame_tilt * wind_x(i,j)
+                bias_y = flame_tilt * wind_y(i,j)
+
                 if (i > 1) then
                     temperature(i-1,j) = temperature(i-1,j) &
-                                       + flame_heat*dt
+                                       + max(0.0d0, flame_heat*dt*(1.0d0 - bias_x))
                 end if
 
                 if (i < nx) then
                     temperature(i+1,j) = temperature(i+1,j) &
-                                       + flame_heat*dt
+                                       + max(0.0d0, flame_heat*dt*(1.0d0 + bias_x))
                 end if
 
                 if (j > 1) then
                     temperature(i,j-1) = temperature(i,j-1) &
-                                       + flame_heat*dt
+                                       + max(0.0d0, flame_heat*dt*(1.0d0 - bias_y))
                 end if
 
                 if (j < ny) then
                     temperature(i,j+1) = temperature(i,j+1) &
-                                       + flame_heat*dt
+                                       + max(0.0d0, flame_heat*dt*(1.0d0 + bias_y))
                 end if
 
             end if

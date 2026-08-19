@@ -5,10 +5,12 @@ program wildfire
   use grid
   use physics
   use io
+  use banner
 
   implicit none
 
   integer :: timestep
+  call print_banner()
 
   call init_grid()
 

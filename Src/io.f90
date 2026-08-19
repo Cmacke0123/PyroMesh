@@ -16,7 +16,8 @@ contains
 
     do i = 1, nx
       do j = 1, ny
-        write(unit,*) i, j, temperature(i,j), fuel(i,j), state(i,j)
+        write(unit,*) i, j, temperature(i,j), fuel(i,j), state(i,j), &
+                      wind_x(i,j), wind_y(i,j)
       end do
     end do
 
