@@ -27,8 +27,21 @@ subroutine step_temperature()
 
     temperature_new = temperature
 
-    do i = 2, nx-1
-        do j = 2, ny-1
+    ! Safe to parallelize as-is: each (i,j) iteration only ever writes
+    ! to its own temperature_new(i,j), reading from the untouched old
+    ! temperature(:,:) array. No thread can write a cell another thread
+    ! reads, so there's no race regardless of scheduling.
+    ! Loop order: j outer, i inner. Fortran arrays are column-major, so
+    ! temperature(i,j) and temperature(i+1,j) are adjacent in memory --
+    ! i is the fast-varying index. Looping i in the innermost loop keeps
+    ! each thread's memory access sequential/cache-friendly; the
+    ! original i-outer/j-inner order strided through memory by nx
+    ! elements every step, which is the single biggest cost in this
+    ! whole file (~4-5x on a large grid in my testing, bigger than the
+    ! threading gain).
+    !$omp parallel do collapse(2) private(lap, dTdx, dTdy) schedule(static)
+    do j = 2, ny-1
+        do i = 2, nx-1
 
             if (state(i,j) /= 2) then
 
@@ -56,6 +69,7 @@ subroutine step_temperature()
 
         end do
     end do
+    !$omp end parallel do
 
     temperature = temperature_new
 
@@ -74,8 +88,10 @@ subroutine ignite_cells()
 
     integer :: i, j
 
-    do i = 1, nx
-        do j = 1, ny
+    ! Safe: each iteration only reads/writes its own cell.
+    !$omp parallel do collapse(2) schedule(static)
+    do j = 1, ny
+        do i = 1, nx
 
             if (state(i,j) == 0) then
 
@@ -90,6 +106,7 @@ subroutine ignite_cells()
 
         end do
     end do
+    !$omp end parallel do
 
 end subroutine ignite_cells
 
@@ -106,8 +123,11 @@ subroutine burn_cells()
 
     integer :: i, j
 
-    do i = 1, nx
-        do j = 1, ny
+    ! Safe: each iteration only reads/writes its own cell (fuel,
+    ! temperature, state at the same (i,j)) -- no neighbor access.
+    !$omp parallel do collapse(2) schedule(static)
+    do j = 1, ny
+        do i = 1, nx
 
             if (state(i,j) == 1) then
 
@@ -129,6 +149,7 @@ subroutine burn_cells()
 
         end do
     end do
+    !$omp end parallel do
 
 end subroutine burn_cells
 
@@ -146,8 +167,19 @@ subroutine deposit_heat()
     integer :: i, j
     real(8) :: bias_x, bias_y
 
-    do i = 1, nx
-        do j = 1, ny
+    ! NOT embarrassingly parallel like the loops above: this one WRITES
+    ! to neighboring cells, not just its own. Two different burning
+    ! cells two apart in the same row/column (or otherwise sharing a
+    ! neighbor) can target the same temperature(...) element on
+    ! different threads at the same time -- e.g. cell i and cell i+2
+    ! both write to temperature(i+1,j). Each individual update is
+    ! wrapped in "!$omp atomic" so the read-modify-write on that shared
+    ! cell can't be torn by another thread; without this it's a real
+    ! data race (occasionally dropped updates, not a crash, which makes
+    ! it the nasty kind of bug -- it wouldn't show up every run).
+    !$omp parallel do collapse(2) private(bias_x, bias_y) schedule(static)
+    do j = 1, ny
+        do i = 1, nx
 
             if (state(i,j) == 1) then
 
@@ -155,21 +187,25 @@ subroutine deposit_heat()
                 bias_y = flame_tilt * wind_y(i,j)
 
                 if (i > 1) then
+                    !$omp atomic update
                     temperature(i-1,j) = temperature(i-1,j) &
                                        + max(0.0d0, flame_heat*dt*(1.0d0 - bias_x))
                 end if
 
                 if (i < nx) then
+                    !$omp atomic update
                     temperature(i+1,j) = temperature(i+1,j) &
                                        + max(0.0d0, flame_heat*dt*(1.0d0 + bias_x))
                 end if
 
                 if (j > 1) then
+                    !$omp atomic update
                     temperature(i,j-1) = temperature(i,j-1) &
                                        + max(0.0d0, flame_heat*dt*(1.0d0 - bias_y))
                 end if
 
                 if (j < ny) then
+                    !$omp atomic update
                     temperature(i,j+1) = temperature(i,j+1) &
                                        + max(0.0d0, flame_heat*dt*(1.0d0 + bias_y))
                 end if
@@ -178,6 +214,7 @@ subroutine deposit_heat()
 
         end do
     end do
+    !$omp end parallel do
 
 end subroutine deposit_heat
 

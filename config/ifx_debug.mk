@@ -10,4 +10,5 @@ FFLAGS = \
     -fpe0 \
     -standard-semantics \
     -fp-model precise \
+    -qopenmp \
     -module build/mod

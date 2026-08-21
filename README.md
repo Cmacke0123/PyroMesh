@@ -2,6 +2,8 @@
 
 ## Author(s): Connor MacKenzie
 
+#### A complete physics based model is the one that considers the physics of fire propagation as well as the chemistry of fuel combustion. (Sullivan)
+
 
 #### Welcome to ***PyroMesh*** - a collaborative project set out to understand and predict wildfire behavior more accurately using physics and forestry informed algorithms. Inspiration for this project derives from research in plasma physics where computational modelling is heavily used. Within this field, a industry standard for computer modelling of plasmas is known as Particle-in-Cell (PIC) simulations where space is discretized into a grid, and bunches of particles called "macro-particles" are pushed each time step based on the velocities of the macro-particles and the electromagnetic fields present. 
 

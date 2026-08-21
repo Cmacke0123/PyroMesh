@@ -3,7 +3,7 @@ module params
 
     integer, parameter :: nx = 200
     integer, parameter :: ny = 200
-    integer, parameter :: nt = 400
+    integer, parameter :: nt = 
 
     real(8), parameter :: dx = 5.0
     real(8), parameter :: dt = 0.01
