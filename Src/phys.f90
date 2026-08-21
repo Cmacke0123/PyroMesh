@@ -16,8 +16,7 @@ contains
 !
 ! The advection term uses upwind differencing (picks the neighbor the
 ! wind is blowing FROM). Central differencing for advection is
-! unconditionally unstable with forward-Euler time stepping, so this
-! isn't a style choice -- it's required for the scheme to stay stable.
+! unconditionally unstable. 
 !==========================================================
 
 subroutine step_temperature()
@@ -27,6 +26,11 @@ subroutine step_temperature()
 
     temperature_new = temperature
 
+    ! Safe to parallelize as-is: each (i,j) iteration only ever writes
+    ! to its own temperature_new(i,j), reading from the untouched old
+    ! temperature(:,:) array. No thread can write a cell another thread
+    ! reads, so there's no race regardless of scheduling.
+    !$omp parallel do collapse(2) private(lap, dTdx, dTdy) schedule(static)
     do i = 2, nx-1
         do j = 2, ny-1
 
@@ -56,6 +60,7 @@ subroutine step_temperature()
 
         end do
     end do
+    !$omp end parallel do
 
     temperature = temperature_new
 
@@ -67,13 +72,14 @@ end subroutine step_temperature
 ! Ignition
 !
 ! Converts unburned fuel into burning cells
-!
 !==========================================================
 
 subroutine ignite_cells()
 
     integer :: i, j
 
+    ! Safe: each iteration only reads/writes its own cell.
+    !$omp parallel do collapse(2) schedule(static)
     do i = 1, nx
         do j = 1, ny
 
@@ -90,6 +96,7 @@ subroutine ignite_cells()
 
         end do
     end do
+    !$omp end parallel do
 
 end subroutine ignite_cells
 
@@ -99,13 +106,15 @@ end subroutine ignite_cells
 ! Combustion
 !
 ! Consumes fuel and releases heat in burning cells
-!
 !==========================================================
 
 subroutine burn_cells()
 
     integer :: i, j
 
+    ! Safe: each iteration only reads/writes its own cell (fuel,
+    ! temperature, state at the same (i,j)) -- no neighbor access.
+    !$omp parallel do collapse(2) schedule(static)
     do i = 1, nx
         do j = 1, ny
 
@@ -129,6 +138,7 @@ subroutine burn_cells()
 
         end do
     end do
+    !$omp end parallel do
 
 end subroutine burn_cells
 
@@ -146,6 +156,7 @@ subroutine deposit_heat()
     integer :: i, j
     real(8) :: bias_x, bias_y
 
+    !$omp parallel do collapse(2) private(bias_x, bias_y) schedule(static)
     do i = 1, nx
         do j = 1, ny
 
@@ -155,21 +166,25 @@ subroutine deposit_heat()
                 bias_y = flame_tilt * wind_y(i,j)
 
                 if (i > 1) then
+                    !$omp atomic update
                     temperature(i-1,j) = temperature(i-1,j) &
                                        + max(0.0d0, flame_heat*dt*(1.0d0 - bias_x))
                 end if
 
                 if (i < nx) then
+                    !$omp atomic update
                     temperature(i+1,j) = temperature(i+1,j) &
                                        + max(0.0d0, flame_heat*dt*(1.0d0 + bias_x))
                 end if
 
                 if (j > 1) then
+                    !$omp atomic update
                     temperature(i,j-1) = temperature(i,j-1) &
                                        + max(0.0d0, flame_heat*dt*(1.0d0 - bias_y))
                 end if
 
                 if (j < ny) then
+                    !$omp atomic update
                     temperature(i,j+1) = temperature(i,j+1) &
                                        + max(0.0d0, flame_heat*dt*(1.0d0 + bias_y))
                 end if
@@ -178,6 +193,7 @@ subroutine deposit_heat()
 
         end do
     end do
+    !$omp end parallel do
 
 end subroutine deposit_heat
 
