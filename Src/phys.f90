@@ -17,7 +17,7 @@ contains
 ! The advection term uses upwind differencing (picks the neighbor the
 ! wind is blowing FROM). Central differencing for advection is
 ! unconditionally unstable with forward-Euler time stepping, so this
-! isn't a style choice -- it's required for the scheme to stay stable.
+! isn't a style choice -- it's required for the scheme to stay stable. Hi
 !==========================================================
 
 subroutine step_temperature()
